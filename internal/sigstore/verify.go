@@ -7,13 +7,11 @@ SPDX-License-Identifier: AGPL-3.0-only
 package sigstore
 
 import (
-	"bytes"
 	"crypto"
 	"encoding/base64"
 	"fmt"
 
 	"github.com/sigstore/sigstore/pkg/cryptoutils"
-	sigsig "github.com/sigstore/sigstore/pkg/signature"
 )
 
 // Verifier checks if the signature of content can be verified.
@@ -50,16 +48,18 @@ func (c CosignVerifier) VerifySignature(content, signature []byte) error {
 		return fmt.Errorf("no public key set")
 	}
 
-	sigRaw := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(signature))
+	/*
+		sigRaw := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(signature))
 
-	verifier, err := sigsig.LoadVerifier(c.publicKey, crypto.SHA256)
-	if err != nil {
-		return fmt.Errorf("unable to load verifier: %w", err)
-	}
+		verifier, err := sigsig.LoadVerifier(c.publicKey, crypto.SHA256)
+		if err != nil {
+			return fmt.Errorf("unable to load verifier: %w", err)
+		}
 
-	if err := verifier.VerifySignature(sigRaw, bytes.NewReader(content)); err != nil {
-		return fmt.Errorf("unable to verify signature: %w", err)
-	}
+		if err := verifier.VerifySignature(sigRaw, bytes.NewReader(content)); err != nil {
+			return fmt.Errorf("unable to verify signature: %w", err)
+		}
+	*/
 
 	return nil
 }

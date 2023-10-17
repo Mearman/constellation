@@ -37,10 +37,10 @@ locals {
     constellation-uid = local.uid,
   }
   ports_node_range      = "30000-32767"
-  cidr_vpc_subnet_nodes = "192.168.178.0/24"
-  cidr_vpc_subnet_pods  = "10.10.0.0/16"
-  cidr_vpc_subnet_proxy = "192.168.179.0/24"
-  cidr_vpc_subnet_ilb   = "192.168.180.0/24"
+  cidr_vpc_subnet_nodes = "10.8.16.0/24"
+  cidr_vpc_subnet_pods  = "10.21.0.0/16"
+  cidr_vpc_subnet_proxy = "10.2.3.0/24"
+  cidr_vpc_subnet_ilb   = "10.2.5.0/29"
   kube_env              = "AUTOSCALER_ENV_VARS: kube_reserved=cpu=1060m,memory=1019Mi,ephemeral-storage=41Gi;node_labels=;os=linux;os_distribution=cos;evictionHard="
   control_plane_named_ports = flatten([
     { name = "kubernetes", port = "6443", health_check = "HTTPS" },
