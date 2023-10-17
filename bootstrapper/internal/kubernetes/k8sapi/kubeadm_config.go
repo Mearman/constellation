@@ -64,7 +64,7 @@ func (c *KubdeadmConfiguration) InitConfiguration(externalCloudProvider bool, cl
 			// Target kubernetes version of the control plane.
 			KubernetesVersion: clusterVersion,
 			Networking: kubeadm.Networking{
-				ServiceSubnet: "10.2.3.0/24",
+				ServiceSubnet: "10.2.4.0/24",
 			},
 			// necessary to be able to access the kubeapi server through localhost
 			APIServer: kubeadm.APIServer{
