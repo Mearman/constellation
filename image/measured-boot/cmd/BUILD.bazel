@@ -21,8 +21,8 @@ go_binary(
     ],
     embed = [":cmd_lib"],
     # keep
-    env = {
-        "DISSECT_TOOLCHAIN": "$(rootpath @systemd//:bin/systemd-dissect)",
-    },
+    # env = {
+    #     "DISSECT_TOOLCHAIN": "$(rootpath @systemd//:bin/systemd-dissect)",
+    # },
     visibility = ["//visibility:public"],
 )
