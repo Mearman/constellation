@@ -178,7 +178,11 @@ func (d *AttestationDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	csp := cloudprovider.FromString(data.CSP.ValueString())
 	if csp == cloudprovider.Unknown {
-		resp.Diagnostics.AddError("Unknown CSP", fmt.Sprintf("Unknown CSP: %s", data.CSP.ValueString()))
+		resp.Diagnostics.AddAttributeError(
+			path.Root("csp"),
+			"Invalid CSP",
+			fmt.Sprintf("Invalid CSP: %s", data.CSP.ValueString()),
+		)
 		return
 	}
 	attestationVariant, err := variant.FromString(data.AttestationVariant.ValueString())
@@ -194,6 +198,9 @@ func (d *AttestationDataSource) Read(ctx context.Context, req datasource.ReadReq
 			return
 		}
 		tfSnpVersions := convertSNPAttestationTfStateCompatible(resp, attestationVariant, snpVersions)
+		if resp.Diagnostics.HasError() {
+			return
+		}
 		diags := resp.State.SetAttribute(ctx, path.Root("attestation"), tfSnpVersions)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
@@ -245,9 +252,12 @@ func convertSNPAttestationTfStateCompatible(resp *datasource.ReadResponse, attes
 	if attestationVariant.Equal(variant.AzureSEVSNP{}) {
 		firmwareCfg := config.DefaultForAzureSEVSNP().FirmwareSignerConfig
 		keyDigestAny, err := firmwareCfg.AcceptedKeyDigests.MarshalYAML()
-		keyDigest := keyDigestAny.([]string)
 		if err != nil {
 			resp.Diagnostics.AddError("Marshalling Accepted Key Digests", err.Error())
+		}
+		keyDigest, ok := keyDigestAny.([]string)
+		if !ok {
+			resp.Diagnostics.AddError("Reading Accepted Key Digests", "Could not convert to []string")
 		}
 		tfSnpVersions.AzureSNPFirmwareSignerConfig = azureSnpFirmwareSignerConfig{
 			AcceptedKeyDigests: keyDigest,
