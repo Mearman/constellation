@@ -46,13 +46,13 @@ type AttestationDataSource struct {
 
 // AttestationDataSourceModel describes the data source data model.
 type AttestationDataSourceModel struct {
-	CSP                types.String `tfsdk:"csp"`
-	AttestationVariant types.String `tfsdk:"attestation_variant"`
-	ImageVersion       types.String `tfsdk:"image_version"`
-	MaaURL             types.String `tfsdk:"maa_url"`
-	ID                 types.String `tfsdk:"id"`
-	Measurements       types.Map    `tfsdk:"measurements"`
-	Attestation        types.Object `tfsdk:"attestation"`
+	CSP                types.String           `tfsdk:"csp"`
+	AttestationVariant types.String           `tfsdk:"attestation_variant"`
+	ImageVersion       types.String           `tfsdk:"image_version"`
+	MaaURL             types.String           `tfsdk:"maa_url"`
+	ID                 types.String           `tfsdk:"id"`
+	Measurements       map[string]measurement `tfsdk:"measurements"`
+	Attestation        sevSnpAttestation      `tfsdk:"attestation"`
 }
 
 // Configure configures the data source.
@@ -201,11 +201,7 @@ func (d *AttestationDataSource) Read(ctx context.Context, req datasource.ReadReq
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		diags := resp.State.SetAttribute(ctx, path.Root("attestation"), tfSnpVersions)
-		resp.Diagnostics.Append(diags...)
-		if resp.Diagnostics.HasError() {
-			return
-		}
+		data.Attestation = tfSnpVersions
 	}
 
 	verifyFetcher := measurements.NewVerifyFetcher(sigstore.NewCosignVerifier, d.rekor, d.client)
@@ -220,11 +216,14 @@ func (d *AttestationDataSource) Read(ctx context.Context, req datasource.ReadReq
 		}
 	}
 	tfMeasurements := convertMeasurementsTfStateCompatible(fetchedMeasurements)
-	diags := resp.State.SetAttribute(ctx, path.Root("measurements"), tfMeasurements)
-	resp.Diagnostics.Append(diags...)
+	data.Measurements = tfMeasurements
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// Write the model to the response
+	resp.Diagnostics.Append(resp.State.Set(ctx, data)...)
+
 	tflog.Trace(ctx, "read constellation attestation data source")
 }
 
@@ -243,11 +242,11 @@ func convertSNPAttestationTfStateCompatible(resp *datasource.ReadResponse, attes
 		resp.Diagnostics.AddError("Marshalling AMD Root Key", err.Error())
 	}
 	tfSnpVersions := sevSnpAttestation{
-		BootloaderVersion: snpVersions.Bootloader,
-		TEEVersion:        snpVersions.TEE,
-		SNPVersion:        snpVersions.SNP,
-		MicrocodeVersion:  snpVersions.Microcode,
-		AMDRootKey:        string(certBytes),
+		BootloaderVersion: types.Int64Value(int64(snpVersions.Bootloader)),
+		TEEVersion:        types.Int64Value(int64(snpVersions.TEE)),
+		SNPVersion:        types.Int64Value(int64(snpVersions.SNP)),
+		MicrocodeVersion:  types.Int64Value(int64(snpVersions.Microcode)),
+		AMDRootKey:        types.StringValue(string(certBytes)),
 	}
 	if attestationVariant.Equal(variant.AzureSEVSNP{}) {
 		firmwareCfg := config.DefaultForAzureSEVSNP().FirmwareSignerConfig
@@ -259,10 +258,14 @@ func convertSNPAttestationTfStateCompatible(resp *datasource.ReadResponse, attes
 		if !ok {
 			resp.Diagnostics.AddError("Reading Accepted Key Digests", "Could not convert to []string")
 		}
+		keyDigestStrings := make([]types.String, len(keyDigest))
+		for i, digest := range keyDigest {
+			keyDigestStrings[i] = types.StringValue(digest)
+		}
 		tfSnpVersions.AzureSNPFirmwareSignerConfig = azureSnpFirmwareSignerConfig{
-			AcceptedKeyDigests: keyDigest,
-			EnforcementPolicy:  firmwareCfg.EnforcementPolicy.String(),
-			MAAURL:             firmwareCfg.MAAURL,
+			AcceptedKeyDigests: keyDigestStrings,
+			EnforcementPolicy:  types.StringValue(firmwareCfg.EnforcementPolicy.String()),
+			MAAURL:             types.StringValue(firmwareCfg.MAAURL),
 		}
 	}
 	return tfSnpVersions
@@ -273,29 +276,29 @@ func convertMeasurementsTfStateCompatible(m measurements.M) map[string]measureme
 	for key, value := range m {
 		keyStr := strconv.FormatUint(uint64(key), 10)
 		tfMeasurements[keyStr] = measurement{
-			Expected: hex.EncodeToString(value.Expected[:]),
-			WarnOnly: bool(value.ValidationOpt),
+			Expected: types.StringValue(hex.EncodeToString(value.Expected[:])),
+			WarnOnly: types.BoolValue(bool(value.ValidationOpt)),
 		}
 	}
 	return tfMeasurements
 }
 
 type measurement struct {
-	Expected string `tfsdk:"expected"`
-	WarnOnly bool   `tfsdk:"warn_only"`
+	Expected types.String `tfsdk:"expected"`
+	WarnOnly types.Bool   `tfsdk:"warn_only"`
 }
 
 type sevSnpAttestation struct {
-	BootloaderVersion            uint8                        `tfsdk:"bootloader_version"`
-	TEEVersion                   uint8                        `tfsdk:"tee_version"`
-	SNPVersion                   uint8                        `tfsdk:"snp_version"`
-	MicrocodeVersion             uint8                        `tfsdk:"microcode_version"`
-	AMDRootKey                   string                       `tfsdk:"amd_root_key"`
+	BootloaderVersion            types.Int64                  `tfsdk:"bootloader_version"`
+	TEEVersion                   types.Int64                  `tfsdk:"tee_version"`
+	SNPVersion                   types.Int64                  `tfsdk:"snp_version"`
+	MicrocodeVersion             types.Int64                  `tfsdk:"microcode_version"`
+	AMDRootKey                   types.String                 `tfsdk:"amd_root_key"`
 	AzureSNPFirmwareSignerConfig azureSnpFirmwareSignerConfig `tfsdk:"azure_firmware_signer_config"`
 }
 
 type azureSnpFirmwareSignerConfig struct {
-	AcceptedKeyDigests []string `tfsdk:"accepted_key_digests"`
-	EnforcementPolicy  string   `tfsdk:"enforcement_policy"`
-	MAAURL             string   `tfsdk:"maa_url"`
+	AcceptedKeyDigests []types.String `tfsdk:"accepted_key_digests"`
+	EnforcementPolicy  types.String   `tfsdk:"enforcement_policy"`
+	MAAURL             types.String   `tfsdk:"maa_url"`
 }
