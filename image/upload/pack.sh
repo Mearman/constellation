@@ -38,6 +38,8 @@ pack() {
 
   azure)
     echo "📥 Packing Azure image..."
+    # Disk Images on Azure have to be at least 1GiB in size.
+    truncate -s \>1GiB "${unpacked_image_dir}/${unpacked_image_filename}"
     # Disk Images on Azure have to be a multiple of 1MiB in size.
     truncate -s %1MiB "${unpacked_image_dir}/${unpacked_image_filename}"
     qemu-img convert -p -f raw -O vpc -o force_size,subformat=fixed "${unpacked_image_dir}/${unpacked_image_filename}" "${packed_image}"
