@@ -26,6 +26,10 @@ VARIANTS = [
         "csp": "gcp",
     },
     {
+        "attestation_variant": "gcp-tdx",
+        "csp": "gcp",
+    },
+    {
         "attestation_variant": "qemu-vtpm",
         "csp": "openstack",
     },
@@ -122,6 +126,11 @@ attestation_variant_settings = {
     "gcp-sev-snp": {
         "kernel_command_line_dict": {
             "constel.attestation-variant": "gcp-sev-snp",
+        },
+    },
+    "gcp-tdx": {
+        "kernel_command_line_dict": {
+            "constel.attestation-variant": "gcp-tdx",
         },
     },
     "qemu-vtpm": {
