@@ -1015,6 +1015,24 @@ type GCPSEVSNP struct {
 	// description: |
 	//   Expected TPM measurements.
 	Measurements measurements.M `json:"measurements" yaml:"measurements" validate:"required,no_placeholders"`
+	// description: |
+	//   Lowest acceptable bootloader version.
+	BootloaderVersion AttestationVersion `json:"bootloaderVersion" yaml:"bootloaderVersion"`
+	// description: |
+	//   Lowest acceptable TEE version.
+	TEEVersion AttestationVersion `json:"teeVersion" yaml:"teeVersion"`
+	// description: |
+	//   Lowest acceptable SEV-SNP version.
+	SNPVersion AttestationVersion `json:"snpVersion" yaml:"snpVersion"`
+	// description: |
+	//   Lowest acceptable microcode version.
+	MicrocodeVersion AttestationVersion `json:"microcodeVersion" yaml:"microcodeVersion"`
+	// description: |
+	//   AMD Root Key certificate used to verify the SEV-SNP certificate chain.
+	AMDRootKey Certificate `json:"amdRootKey" yaml:"amdRootKey"`
+	// description: |
+	//   AMD Signing Key certificate used to verify the SEV-SNP VCEK / VLEK certificate.
+	AMDSigningKey Certificate `json:"amdSigningKey,omitempty" yaml:"amdSigningKey,omitempty"`
 }
 
 // GetVariant returns gcp-sev-snp as the variant.
@@ -1046,6 +1064,27 @@ type GCPTDX struct {
 	// description: |
 	//   Expected TPM measurements.
 	Measurements measurements.M `json:"measurements" yaml:"measurements" validate:"required,no_placeholders"`
+	// description: |
+	//   Minimum required QE security version number (SVN).
+	QESVN uint16 `json:"qeSVN" yaml:"qeSVN"`
+	// description: |
+	//   Minimum required PCE security version number (SVN).
+	PCESVN uint16 `json:"pceSVN" yaml:"pceSVN"`
+	// description: |
+	//   Component-wise minimum required 16 byte hex-encoded TEE_TCB security version number (SVN).
+	TEETCBSVN encoding.HexBytes `json:"teeTCBSVN" yaml:"teeTCBSVN"`
+	// description: |
+	//   Expected 16 byte hex-encoded QE_VENDOR_ID field.
+	QEVendorID encoding.HexBytes `json:"qeVendorID" yaml:"qeVendorID"`
+	// description: |
+	//   Expected 48 byte hex-encoded MR_SEAM value.
+	MRSeam encoding.HexBytes `json:"mrSeam" yaml:"mrSeam"`
+	// description: |
+	//   Expected 8 byte hex-encoded XFAM field.
+	XFAM encoding.HexBytes `json:"xfam" yaml:"xfam"`
+	// description: |
+	//   Intel Root Key certificate used to verify the TDX certificate chain.
+	IntelRootKey Certificate `json:"intelRootKey" yaml:"intelRootKey"`
 }
 
 // GetVariant returns gcp-tdx as the variant.

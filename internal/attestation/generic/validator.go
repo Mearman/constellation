@@ -9,105 +9,197 @@ package generic
 import (
 	"context"
 	"crypto"
-	"encoding/json"
+	"crypto/sha512"
 	"errors"
 	"fmt"
 
 	"github.com/edgelesssys/constellation/v2/internal/attestation"
+	atlsAttestation "github.com/edgelesssys/constellation/v2/internal/attestation"
 	"github.com/edgelesssys/constellation/v2/internal/attestation/measurements"
-	"github.com/google/go-sev-guest/proto/sevsnp"
+	"github.com/edgelesssys/constellation/v2/internal/config"
+	"github.com/google/go-sev-guest/abi"
+	"github.com/google/go-sev-guest/kds"
+	sevValidate "github.com/google/go-sev-guest/validate"
+	sevVerify "github.com/google/go-sev-guest/verify"
+	"github.com/google/go-sev-guest/verify/trust"
+	tdxValidate "github.com/google/go-tdx-guest/validate"
+	tdxVerify "github.com/google/go-tdx-guest/verify"
+	tpmClient "github.com/google/go-tpm-tools/client"
 	"github.com/google/go-tpm-tools/proto/attest"
+	"github.com/google/go-tpm-tools/proto/tpm"
+	tpmServer "github.com/google/go-tpm-tools/server"
 	"github.com/google/go-tpm/legacy/tpm2"
+	"google.golang.org/protobuf/proto"
 )
 
 // Validator handles validation of TPM based attestation.
 type Validator struct {
 	expected measurements.M
-	log      attestation.Logger
+	tech     TEETechnology
+
+	teeAttestationConfig TEEAttestationConfig
+
+	log attestation.Logger
+}
+
+// TEEAttestationConfig are the configuration options for validating a TEE attestation.
+type TEEAttestationConfig struct {
+
+	// TODO(msanft): Make these generic types for all CSPs (except Azure)
+	// once we use the generic attestation package for non-GCP CSPs.
+
+	// SEVSNP are the options for SEV-SNP attestation.
+	SEVSNP SEVSNPAttestationConfig
+	// TDX are the options for TDX attestation.
+	TDX TDXAttestationConfig
+}
+
+// SEVSNPAttestationConfig are the SEV-SNP specific configuration options for validating a TEE attestation.
+type SEVSNPAttestationConfig struct {
+	// AttestationConfig is the config for SEV-SNP attestation.
+	AttestationConfig *config.GCPSEVSNP
+	// TrustedRoots are the trusted root certificates for SEV-SNP attestation,
+	// mapped by their product names (e.g. "Milan").
+	TrustedRoots map[string][]*trust.AMDRootCerts
+}
+
+// TDXAttestationConfig are the TDX specific configuration options for validating a TEE attestation.
+type TDXAttestationConfig struct {
+	// AttestationConfig is the config for TDX attestation.
+	AttestationConfig *config.GCPTDX
 }
 
 // NewValidator returns a new Validator.
-func NewValidator(expected measurements.M, log attestation.Logger) *Validator {
+func NewValidator(expected measurements.M, tech TEETechnology, log attestation.Logger) *Validator {
 	if log == nil {
 		log = &attestation.NOPLogger{}
 	}
 
 	return &Validator{
 		expected: expected,
+		tech:     tech,
 		log:      log,
 	}
 }
 
-// Validate a TPM based attestation.
-func (v *Validator) Validate(ctx context.Context, attDocRaw []byte, nonce []byte) (userData []byte, err error) {
+/*
+Validate validates a TPM attestation document with the given nonce.
+
+It does so by:
+  - Deserializing the attestation protobuf message.
+  - Verifying the TPM attestation, and while doing that, also establishing trust in the
+    TPM's attestation key by verifying it against the TEE attestation report.
+  - Verifying the PCRs.
+
+After the validation, userData is known to be trusted.
+*/
+func (v *Validator) Validate(ctx context.Context, rawAttestation, userData, nonce []byte) (err error) {
 	v.log.Info("Validating attestation document")
 	defer func() {
 		if err != nil {
-			v.log.Warn(fmt.Sprintf("Failed to validate attestation document: %s", err))
+			v.log.Warn("Failed to validate attestation document", "error", err)
 		}
 	}()
 
-	// Explicitly initialize this struct, as TeeAttestation
-	// is a "oneof" protobuf field, which needs an explicit
-	// type to be set to be unmarshaled correctly.
-	// Note: this value is incompatible with TDX attestation!
-	// TODO(msanft): select the correct attestation type (SEV-SNP, TDX, ...) here.
-	attDoc := AttestationDocument{
-		Attestation: &attest.Attestation{
-			TeeAttestation: &attest.Attestation_SevSnpAttestation{
-				SevSnpAttestation: &sevsnp.Attestation{},
-			},
-		},
-	}
-	if err := json.Unmarshal(attDocRaw, &attDoc); err != nil {
-		return nil, fmt.Errorf("unmarshaling TPM attestation document: %w", err)
+	var attestation *attest.Attestation
+	if err := proto.Unmarshal(rawAttestation, attestation); err != nil {
+		return fmt.Errorf("unmarshalling attestation document: %w", err)
 	}
 
-	extraData := attestation.MakeExtraData(attDoc.UserData, nonce)
-
-	// Verify and retrieve the trusted attestation public key using the provided instance info
-	aKP, err := v.getTrustedKey(ctx, attDoc, extraData)
-	if err != nil {
-		return nil, fmt.Errorf("validating attestation public key: %w", err)
-	}
+	attestationKeyDigest := sha512.Sum512(attestation.AkPub)
 
 	// Verify the TPM attestation
-	state, err := tpmServer.VerifyAttestation(
-		attDoc.Attestation,
+	if _, err := tpmServer.VerifyAttestation(
+		attestation,
 		tpmServer.VerifyOpts{
-			Nonce:      extraData,
-			TrustedAKs: []crypto.PublicKey{aKP},
+			// We expect the userData as well as the nonce to be the TPM report's reportData.
+			Nonce: atlsAttestation.MakeExtraData(userData, nonce),
+			// We simply trust the AK when verifying the TPM report. It's verification is done
+			// through the TEE attestation report.
+			TrustedAKs: []crypto.PublicKey{attestation.AkPub},
 			AllowSHA1:  false,
+			// Options for verifying the TEE attestation report. Here, we will also establish
+			// trust in the TPM's attestation key.
+			TEEOpts: v.teeOpts(attestationKeyDigest[:]),
 		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("verifying attestation document: %w", err)
-	}
-
-	// Validate confidential computing capabilities of the VM
-	if err := v.validateCVM(attDoc, state); err != nil {
-		return nil, fmt.Errorf("verifying VM confidential computing capabilities: %w", err)
+	); err != nil {
+		return fmt.Errorf("verifying attestation document: %w", err)
 	}
 
 	// Verify PCRs
-	quoteIdx, err := GetSHA256QuoteIndex(attDoc.Attestation.Quotes)
+	quoteIdx, err := GetSHA256QuoteIndex(attestation.Quotes)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	warnings, errs := v.expected.Compare(attDoc.Attestation.Quotes[quoteIdx].Pcrs.Pcrs)
+	warnings, errs := v.expected.Compare(attestation.Quotes[quoteIdx].Pcrs.Pcrs)
 	for _, warning := range warnings {
 		v.log.Warn(warning)
 	}
 	if len(errs) > 0 {
-		return nil, fmt.Errorf("measurement validation failed:\n%w", errors.Join(errs...))
+		return fmt.Errorf("measurement validation failed:\n%w", errors.Join(errs...))
 	}
 
 	v.log.Info("Successfully validated attestation document")
-	return attDoc.UserData, nil
+	return nil
+}
+
+// teeOpts returns the options for verifying the TEE attestation report, based on the TEE technology.
+func (v *Validator) teeOpts(attestationKeyDigest []byte) any {
+	switch v.tech {
+	case TEETechSEVSNP:
+		return v.sevSnpOpts(attestationKeyDigest)
+	case TEETechTDX:
+		return v.tdxOpts(attestationKeyDigest)
+	}
+	return nil
+}
+
+// sevSnpOpts returns the options for verifying a SEV-SNP attestation report.
+func (v *Validator) sevSnpOpts(attestationKeyDigest []byte) *tpmServer.VerifySnpOpts {
+	snpConfig := v.teeAttestationConfig.SEVSNP.AttestationConfig
+	return &tpmServer.VerifySnpOpts{
+		// Options for Report *verification*, i.e. making sure
+		// that the report is signed correctly, by a key that we trust.
+		Verification: &sevVerify.Options{
+			TrustedRoots: v.teeAttestationConfig.SEVSNP.TrustedRoots,
+		},
+		// Options for Report *validation*, i.e. checking whether
+		// the reported state is acceptable.
+		Validation: &sevValidate.Options{
+			// Check that the attestation key's digest is included in the report.
+			ReportData: attestationKeyDigest,
+			GuestPolicy: abi.SnpPolicy{
+				Debug: false, // Debug means the VM can be decrypted by the host for debugging purposes and thus is not allowed.
+				SMT:   false, // Forbid Simultaneous Multi-Threading (SMT).
+			},
+			VMPL: new(int), // Checks that Virtual Machine Privilege Level (VMPL) is 0.
+			// This checks that the reported LaunchTCB version is equal or greater than the minimum specified in the config.
+			// We don't specify Options.MinimumTCB as it only restricts the allowed TCB for Current_ and Reported_TCB.
+			// Because we allow Options.ProvisionalFirmware, there is not security gained in also checking Current_ and Reported_TCB.
+			// We always have to check Launch_TCB as this value indicated the smallest TCB version a VM has seen during
+			// it's lifetime.
+			MinimumLaunchTCB: kds.TCBParts{
+				BlSpl:    snpConfig.BootloaderVersion.Value, // Bootloader
+				TeeSpl:   snpConfig.TEEVersion.Value,        // TEE (Secure OS)
+				SnpSpl:   snpConfig.SNPVersion.Value,        // SNP
+				UcodeSpl: snpConfig.MicrocodeVersion.Value,  // Microcode
+			},
+			// Check that CurrentTCB >= CommittedTCB.
+			PermitProvisionalFirmware: true,
+		},
+	}
+}
+
+// tdxOpts returns the options for verifying a TDX attestation report.
+func (v *Validator) tdxOpts(attestationKeyDigest []byte) *tpmServer.VerifyTdxOpts {
+	return &tpmServer.VerifyTdxOpts{
+		Verification: &tdxVerify.Options{},
+		Validation:   &tdxValidate.Options{},
+	}
 }
 
 // GetSHA256QuoteIndex performs safety checks and returns the index for SHA256 PCR quotes.
-func GetSHA256QuoteIndex(quotes []*tpmProto.Quote) (int, error) {
+func GetSHA256QuoteIndex(quotes []*tpm.Quote) (int, error) {
 	if len(quotes) == 0 {
 		return 0, fmt.Errorf("attestation is missing quotes")
 	}
@@ -118,7 +210,7 @@ func GetSHA256QuoteIndex(quotes []*tpmProto.Quote) (int, error) {
 		if quote.Pcrs == nil {
 			return 0, fmt.Errorf("no PCR data in attestation")
 		}
-		if quote.Pcrs.Hash == tpmProto.HashAlgo_SHA256 {
+		if quote.Pcrs.Hash == tpm.HashAlgo_SHA256 {
 			return idx, nil
 		}
 	}

@@ -20,18 +20,6 @@ import (
 type (
 	// TPMOpenFunc opens a TPM device. The caller is responsible for closing the device.
 	TPMOpenFunc func() (io.ReadWriteCloser, error)
-
-	// TEETechnology represents the type of TEE technology used for attestation. (e.g. SEV-SNP, TDX)
-	TEETechnology int
-)
-
-const (
-	// InvalidTEE represents an invalid TEE technology.
-	InvalidTEE TEETechnology = iota
-	// SEVSNP represents the SEV-SNP technology.
-	SEVSNP
-	// TDX represents the TDX technology.
-	TDX
 )
 
 // Issuer handles issuing of TPM based attestation documents.
@@ -63,7 +51,7 @@ It does so by:
   - Getting a TEE quote, if available, which embeds a digest of the attestation key.
   - Returning the proto-serialized attestation document.
 */
-func (i *Issuer) Issue(nonce []byte) (res []byte, err error) {
+func (i *Issuer) Issue(userData, nonce []byte) (res []byte, err error) {
 	i.log.Info("Issuing attestation statement")
 	defer func() {
 		if err != nil {
@@ -94,7 +82,7 @@ func (i *Issuer) Issue(nonce []byte) (res []byte, err error) {
 
 	attestation, err := attestationKey.Attest(tpmClient.AttestOpts{
 		// Nonce is the reportData being put into the TPM quote.
-		Nonce: nonce,
+		Nonce: attestation.MakeExtraData(userData, nonce),
 		// TEEdevice is used to get the TEE-specific quote.
 		TEEDevice: teeDev,
 		// TEENonce is the report data being put into the TEE quote.
@@ -111,9 +99,9 @@ func (i *Issuer) Issue(nonce []byte) (res []byte, err error) {
 // teeDevice returns a TEE device based on the TEE technology of the issuer.
 func (i *Issuer) teeDevice() (tpmClient.TEEDevice, error) {
 	switch i.tech {
-	case SEVSNP:
+	case TEETechSEVSNP:
 		return tpmClient.CreateSevSnpDevice()
-	case TDX:
+	case TEETechTDX:
 		return tpmClient.CreateTdxQuoteProvider()
 	default:
 		return nil, fmt.Errorf("invalid TEE technology: %d", i.tech)
