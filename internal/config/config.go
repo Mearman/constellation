@@ -1010,6 +1010,68 @@ func (c GCPSEVES) EqualTo(other AttestationCfg) (bool, error) {
 	return c.Measurements.EqualTo(otherCfg.Measurements), nil
 }
 
+// GCPSEVSNP is the configuration for GCP SEV-SNP attestation.
+type GCPSEVSNP struct {
+	// description: |
+	//   Expected TPM measurements.
+	Measurements measurements.M `json:"measurements" yaml:"measurements" validate:"required,no_placeholders"`
+}
+
+// GetVariant returns gcp-sev-snp as the variant.
+func (GCPSEVSNP) GetVariant() variant.Variant {
+	return variant.GCPSEVSNP{}
+}
+
+// GetMeasurements returns the measurements used for attestation.
+func (c GCPSEVSNP) GetMeasurements() measurements.M {
+	return c.Measurements
+}
+
+// SetMeasurements updates a config's measurements using the given measurements.
+func (c *GCPSEVSNP) SetMeasurements(m measurements.M) {
+	c.Measurements = m
+}
+
+// EqualTo returns true if the config is equal to the given config.
+func (c GCPSEVSNP) EqualTo(other AttestationCfg) (bool, error) {
+	otherCfg, ok := other.(*GCPSEVSNP)
+	if !ok {
+		return false, fmt.Errorf("cannot compare %T with %T", c, other)
+	}
+	return c.Measurements.EqualTo(otherCfg.Measurements), nil
+}
+
+// GCPTDX is the configuration for GCP TDX attestation.
+type GCPTDX struct {
+	// description: |
+	//   Expected TPM measurements.
+	Measurements measurements.M `json:"measurements" yaml:"measurements" validate:"required,no_placeholders"`
+}
+
+// GetVariant returns gcp-tdx as the variant.
+func (GCPTDX) GetVariant() variant.Variant {
+	return variant.GCPTDX{}
+}
+
+// GetMeasurements returns the measurements used for attestation.
+func (c GCPTDX) GetMeasurements() measurements.M {
+	return c.Measurements
+}
+
+// SetMeasurements updates a config's measurements using the given measurements.
+func (c *GCPTDX) SetMeasurements(m measurements.M) {
+	c.Measurements = m
+}
+
+// EqualTo returns true if the config is equal to the given config.
+func (c GCPTDX) EqualTo(other AttestationCfg) (bool, error) {
+	otherCfg, ok := other.(*GCPTDX)
+	if !ok {
+		return false, fmt.Errorf("cannot compare %T with %T", c, other)
+	}
+	return c.Measurements.EqualTo(otherCfg.Measurements), nil
+}
+
 // QEMUVTPM is the configuration for QEMU vTPM attestation.
 type QEMUVTPM struct {
 	// description: |

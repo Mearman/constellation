@@ -209,6 +209,42 @@ func (GCPSEVES) Equal(other Getter) bool {
 	return other.OID().Equal(GCPSEVES{}.OID())
 }
 
+// GCPSEVSNP holds the GCP SEV-SNP OID.
+type GCPSEVSNP struct{}
+
+// OID returns the struct's object identifier.
+func (GCPSEVSNP) OID() asn1.ObjectIdentifier {
+	return asn1.ObjectIdentifier{1, 3, 9900, 3, 2}
+}
+
+// String returns the string representation of the OID.
+func (GCPSEVSNP) String() string {
+	return gcpSEVES
+}
+
+// Equal returns true if the other variant is also GCPSEVSNP.
+func (GCPSEVSNP) Equal(other Getter) bool {
+	return other.OID().Equal(GCPSEVSNP{}.OID())
+}
+
+// GCPTDX holds the GCP TDX OID.
+type GCPTDX struct{}
+
+// OID returns the struct's object identifier.
+func (GCPTDX) OID() asn1.ObjectIdentifier {
+	return asn1.ObjectIdentifier{1, 3, 9900, 3, 2}
+}
+
+// String returns the string representation of the OID.
+func (GCPTDX) String() string {
+	return gcpSEVES
+}
+
+// Equal returns true if the other variant is also GCPTDX.
+func (GCPTDX) Equal(other Getter) bool {
+	return other.OID().Equal(GCPTDX{}.OID())
+}
+
 // AzureTDX holds the OID for Azure TDX CVMs.
 type AzureTDX struct{}
 

@@ -129,6 +129,7 @@ attestation_variant_settings = {
         },
     },
     "gcp-tdx": {
+        "base_image": "//image/base:mainline",
         "kernel_command_line_dict": {
             "constel.attestation-variant": "gcp-tdx",
         },

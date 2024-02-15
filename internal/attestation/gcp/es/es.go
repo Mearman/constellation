@@ -42,4 +42,4 @@ Verifies the TPM attestation by using a public key provided by Google's API corr
 [virtual Trusted Platform Module (vTPM)]: https://cloud.google.com/security/shielded-cloud/shielded-vm#vtpm
 [AMD's SNP whitepaper]: https://www.amd.com/system/files/TechDocs/SEV-SNP-strengthening-vm-isolation-with-integrity-protection-and-more.pdf#page=7
 */
-package gcp
+package es
