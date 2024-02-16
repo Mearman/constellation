@@ -2,7 +2,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "5.13.0"
+      version = "5.16.0"
     }
 
     random = {
@@ -175,7 +175,7 @@ module "instance_group" {
   labels              = local.labels
   init_secret_hash    = local.init_secret_hash
   custom_endpoint     = var.custom_endpoint
-  cc_technology = var.cc_technology
+  cc_technology       = var.cc_technology
 }
 
 resource "google_compute_address" "loadbalancer_ip_internal" {

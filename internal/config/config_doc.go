@@ -23,6 +23,8 @@ var (
 	UnsupportedAppRegistrationErrorDoc encoder.Doc
 	SNPFirmwareSignerConfigDoc         encoder.Doc
 	GCPSEVESDoc                        encoder.Doc
+	GCPSEVSNPDoc                       encoder.Doc
+	GCPTDXDoc                          encoder.Doc
 	QEMUVTPMDoc                        encoder.Doc
 	QEMUTDXDoc                         encoder.Doc
 	AWSSEVSNPDoc                       encoder.Doc
@@ -548,6 +550,91 @@ func init() {
 	GCPSEVESDoc.Fields[0].Description = "Expected TPM measurements."
 	GCPSEVESDoc.Fields[0].Comments[encoder.LineComment] = "Expected TPM measurements."
 
+	GCPSEVSNPDoc.Type = "GCPSEVSNP"
+	GCPSEVSNPDoc.Comments[encoder.LineComment] = "GCPSEVSNP is the configuration for GCP SEV-SNP attestation."
+	GCPSEVSNPDoc.Description = "GCPSEVSNP is the configuration for GCP SEV-SNP attestation."
+	GCPSEVSNPDoc.Fields = make([]encoder.Doc, 7)
+	GCPSEVSNPDoc.Fields[0].Name = "measurements"
+	GCPSEVSNPDoc.Fields[0].Type = "M"
+	GCPSEVSNPDoc.Fields[0].Note = ""
+	GCPSEVSNPDoc.Fields[0].Description = "Expected TPM measurements."
+	GCPSEVSNPDoc.Fields[0].Comments[encoder.LineComment] = "Expected TPM measurements."
+	GCPSEVSNPDoc.Fields[1].Name = "bootloaderVersion"
+	GCPSEVSNPDoc.Fields[1].Type = "AttestationVersion"
+	GCPSEVSNPDoc.Fields[1].Note = ""
+	GCPSEVSNPDoc.Fields[1].Description = "Lowest acceptable bootloader version."
+	GCPSEVSNPDoc.Fields[1].Comments[encoder.LineComment] = "Lowest acceptable bootloader version."
+	GCPSEVSNPDoc.Fields[2].Name = "teeVersion"
+	GCPSEVSNPDoc.Fields[2].Type = "AttestationVersion"
+	GCPSEVSNPDoc.Fields[2].Note = ""
+	GCPSEVSNPDoc.Fields[2].Description = "Lowest acceptable TEE version."
+	GCPSEVSNPDoc.Fields[2].Comments[encoder.LineComment] = "Lowest acceptable TEE version."
+	GCPSEVSNPDoc.Fields[3].Name = "snpVersion"
+	GCPSEVSNPDoc.Fields[3].Type = "AttestationVersion"
+	GCPSEVSNPDoc.Fields[3].Note = ""
+	GCPSEVSNPDoc.Fields[3].Description = "Lowest acceptable SEV-SNP version."
+	GCPSEVSNPDoc.Fields[3].Comments[encoder.LineComment] = "Lowest acceptable SEV-SNP version."
+	GCPSEVSNPDoc.Fields[4].Name = "microcodeVersion"
+	GCPSEVSNPDoc.Fields[4].Type = "AttestationVersion"
+	GCPSEVSNPDoc.Fields[4].Note = ""
+	GCPSEVSNPDoc.Fields[4].Description = "Lowest acceptable microcode version."
+	GCPSEVSNPDoc.Fields[4].Comments[encoder.LineComment] = "Lowest acceptable microcode version."
+	GCPSEVSNPDoc.Fields[5].Name = "amdRootKey"
+	GCPSEVSNPDoc.Fields[5].Type = "Certificate"
+	GCPSEVSNPDoc.Fields[5].Note = ""
+	GCPSEVSNPDoc.Fields[5].Description = "AMD Root Key certificate used to verify the SEV-SNP certificate chain."
+	GCPSEVSNPDoc.Fields[5].Comments[encoder.LineComment] = "AMD Root Key certificate used to verify the SEV-SNP certificate chain."
+	GCPSEVSNPDoc.Fields[6].Name = "amdSigningKey"
+	GCPSEVSNPDoc.Fields[6].Type = "Certificate"
+	GCPSEVSNPDoc.Fields[6].Note = ""
+	GCPSEVSNPDoc.Fields[6].Description = "AMD Signing Key certificate used to verify the SEV-SNP VCEK / VLEK certificate."
+	GCPSEVSNPDoc.Fields[6].Comments[encoder.LineComment] = "AMD Signing Key certificate used to verify the SEV-SNP VCEK / VLEK certificate."
+
+	GCPTDXDoc.Type = "GCPTDX"
+	GCPTDXDoc.Comments[encoder.LineComment] = "GCPTDX is the configuration for GCP TDX attestation."
+	GCPTDXDoc.Description = "GCPTDX is the configuration for GCP TDX attestation."
+	GCPTDXDoc.Fields = make([]encoder.Doc, 8)
+	GCPTDXDoc.Fields[0].Name = "measurements"
+	GCPTDXDoc.Fields[0].Type = "M"
+	GCPTDXDoc.Fields[0].Note = ""
+	GCPTDXDoc.Fields[0].Description = "Expected TPM measurements."
+	GCPTDXDoc.Fields[0].Comments[encoder.LineComment] = "Expected TPM measurements."
+	GCPTDXDoc.Fields[1].Name = "qeSVN"
+	GCPTDXDoc.Fields[1].Type = "uint16"
+	GCPTDXDoc.Fields[1].Note = ""
+	GCPTDXDoc.Fields[1].Description = "Minimum required QE security version number (SVN)."
+	GCPTDXDoc.Fields[1].Comments[encoder.LineComment] = "Minimum required QE security version number (SVN)."
+	GCPTDXDoc.Fields[2].Name = "pceSVN"
+	GCPTDXDoc.Fields[2].Type = "uint16"
+	GCPTDXDoc.Fields[2].Note = ""
+	GCPTDXDoc.Fields[2].Description = "Minimum required PCE security version number (SVN)."
+	GCPTDXDoc.Fields[2].Comments[encoder.LineComment] = "Minimum required PCE security version number (SVN)."
+	GCPTDXDoc.Fields[3].Name = "teeTCBSVN"
+	GCPTDXDoc.Fields[3].Type = "HexBytes"
+	GCPTDXDoc.Fields[3].Note = ""
+	GCPTDXDoc.Fields[3].Description = "Component-wise minimum required 16 byte hex-encoded TEE_TCB security version number (SVN)."
+	GCPTDXDoc.Fields[3].Comments[encoder.LineComment] = "Component-wise minimum required 16 byte hex-encoded TEE_TCB security version number (SVN)."
+	GCPTDXDoc.Fields[4].Name = "qeVendorID"
+	GCPTDXDoc.Fields[4].Type = "HexBytes"
+	GCPTDXDoc.Fields[4].Note = ""
+	GCPTDXDoc.Fields[4].Description = "Expected 16 byte hex-encoded QE_VENDOR_ID field."
+	GCPTDXDoc.Fields[4].Comments[encoder.LineComment] = "Expected 16 byte hex-encoded QE_VENDOR_ID field."
+	GCPTDXDoc.Fields[5].Name = "mrSeam"
+	GCPTDXDoc.Fields[5].Type = "HexBytes"
+	GCPTDXDoc.Fields[5].Note = ""
+	GCPTDXDoc.Fields[5].Description = "Expected 48 byte hex-encoded MR_SEAM value."
+	GCPTDXDoc.Fields[5].Comments[encoder.LineComment] = "Expected 48 byte hex-encoded MR_SEAM value."
+	GCPTDXDoc.Fields[6].Name = "xfam"
+	GCPTDXDoc.Fields[6].Type = "HexBytes"
+	GCPTDXDoc.Fields[6].Note = ""
+	GCPTDXDoc.Fields[6].Description = "Expected 8 byte hex-encoded XFAM field."
+	GCPTDXDoc.Fields[6].Comments[encoder.LineComment] = "Expected 8 byte hex-encoded XFAM field."
+	GCPTDXDoc.Fields[7].Name = "intelRootKey"
+	GCPTDXDoc.Fields[7].Type = "Certificate"
+	GCPTDXDoc.Fields[7].Note = ""
+	GCPTDXDoc.Fields[7].Description = "Intel Root Key certificate used to verify the TDX certificate chain."
+	GCPTDXDoc.Fields[7].Comments[encoder.LineComment] = "Intel Root Key certificate used to verify the TDX certificate chain."
+
 	QEMUVTPMDoc.Type = "QEMUVTPM"
 	QEMUVTPMDoc.Comments[encoder.LineComment] = "QEMUVTPM is the configuration for QEMU vTPM attestation."
 	QEMUVTPMDoc.Description = "QEMUVTPM is the configuration for QEMU vTPM attestation."
@@ -809,6 +896,14 @@ func (_ GCPSEVES) Doc() *encoder.Doc {
 	return &GCPSEVESDoc
 }
 
+func (_ GCPSEVSNP) Doc() *encoder.Doc {
+	return &GCPSEVSNPDoc
+}
+
+func (_ GCPTDX) Doc() *encoder.Doc {
+	return &GCPTDXDoc
+}
+
 func (_ QEMUVTPM) Doc() *encoder.Doc {
 	return &QEMUVTPMDoc
 }
@@ -855,6 +950,8 @@ func GetConfigurationDoc() *encoder.FileDoc {
 			&UnsupportedAppRegistrationErrorDoc,
 			&SNPFirmwareSignerConfigDoc,
 			&GCPSEVESDoc,
+			&GCPSEVSNPDoc,
+			&GCPTDXDoc,
 			&QEMUVTPMDoc,
 			&QEMUTDXDoc,
 			&AWSSEVSNPDoc,

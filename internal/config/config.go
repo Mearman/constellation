@@ -295,6 +295,9 @@ type AttestationConfig struct {
 	//   GCP SEV-ES attestation.
 	GCPSEVES *GCPSEVES `yaml:"gcpSEVES,omitempty" validate:"omitempty,dive"`
 	// description: |
+	//   GCP SEV-SNP attestation.
+	GCPSEVSNP *GCPSEVSNP `yaml:"gcpSEVSNP,omitempty" validate:"omitempty,dive"`
+	// description: |
 	//   QEMU tdx attestation.
 	QEMUTDX *QEMUTDX `yaml:"qemuTDX,omitempty" validate:"omitempty,dive"`
 	// description: |
@@ -408,6 +411,7 @@ func Default() *Config {
 			AzureTDX:           DefaultForAzureTDX(),
 			AzureTrustedLaunch: &AzureTrustedLaunch{Measurements: measurements.DefaultsFor(cloudprovider.Azure, variant.AzureTrustedLaunch{})},
 			GCPSEVES:           &GCPSEVES{Measurements: measurements.DefaultsFor(cloudprovider.GCP, variant.GCPSEVES{})},
+			GCPSEVSNP:          DefaultForGCPSEVSNP(),
 			QEMUVTPM:           &QEMUVTPM{Measurements: measurements.DefaultsFor(cloudprovider.QEMU, variant.QEMUVTPM{})},
 		},
 	}
@@ -1033,30 +1037,6 @@ type GCPSEVSNP struct {
 	// description: |
 	//   AMD Signing Key certificate used to verify the SEV-SNP VCEK / VLEK certificate.
 	AMDSigningKey Certificate `json:"amdSigningKey,omitempty" yaml:"amdSigningKey,omitempty"`
-}
-
-// GetVariant returns gcp-sev-snp as the variant.
-func (GCPSEVSNP) GetVariant() variant.Variant {
-	return variant.GCPSEVSNP{}
-}
-
-// GetMeasurements returns the measurements used for attestation.
-func (c GCPSEVSNP) GetMeasurements() measurements.M {
-	return c.Measurements
-}
-
-// SetMeasurements updates a config's measurements using the given measurements.
-func (c *GCPSEVSNP) SetMeasurements(m measurements.M) {
-	c.Measurements = m
-}
-
-// EqualTo returns true if the config is equal to the given config.
-func (c GCPSEVSNP) EqualTo(other AttestationCfg) (bool, error) {
-	otherCfg, ok := other.(*GCPSEVSNP)
-	if !ok {
-		return false, fmt.Errorf("cannot compare %T with %T", c, other)
-	}
-	return c.Measurements.EqualTo(otherCfg.Measurements), nil
 }
 
 // GCPTDX is the configuration for GCP TDX attestation.

@@ -267,6 +267,10 @@ func attestationVariantFromGoIdentifier(identifier string) (variant.Variant, err
 		return variant.AWSNitroTPM{}, nil
 	case "GCPSEVES":
 		return variant.GCPSEVES{}, nil
+	case "GCPSEVSNP":
+		return variant.GCPSEVSNP{}, nil
+	case "GCPTDX":
+		return variant.GCPTDX{}, nil
 	case "AzureSEVSNP":
 		return variant.AzureSEVSNP{}, nil
 	case "AzureTDX":
