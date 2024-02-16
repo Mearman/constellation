@@ -7,14 +7,15 @@ SPDX-License-Identifier: AGPL-3.0-only
 package generic
 
 import (
+	"context"
 	"crypto/sha512"
 	"crypto/x509"
 	"fmt"
 	"io"
 
 	"github.com/edgelesssys/constellation/v2/internal/attestation"
-	"github.com/golang/protobuf/proto"
 	tpmClient "github.com/google/go-tpm-tools/client"
+	"google.golang.org/protobuf/proto"
 )
 
 type (
@@ -51,7 +52,7 @@ It does so by:
   - Getting a TEE quote, if available, which embeds a digest of the attestation key.
   - Returning the proto-serialized attestation document.
 */
-func (i *Issuer) Issue(userData, nonce []byte) (res []byte, err error) {
+func (i *Issuer) Issue(_ context.Context, userData, nonce []byte) (res []byte, err error) {
 	i.log.Info("Issuing attestation statement")
 	defer func() {
 		if err != nil {

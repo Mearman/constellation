@@ -16,7 +16,8 @@ import (
 	azuresnp "github.com/edgelesssys/constellation/v2/internal/attestation/azure/snp"
 	azuretdx "github.com/edgelesssys/constellation/v2/internal/attestation/azure/tdx"
 	"github.com/edgelesssys/constellation/v2/internal/attestation/azure/trustedlaunch"
-	"github.com/edgelesssys/constellation/v2/internal/attestation/es"
+	"github.com/edgelesssys/constellation/v2/internal/attestation/gcp/es"
+	"github.com/edgelesssys/constellation/v2/internal/attestation/generic"
 	"github.com/edgelesssys/constellation/v2/internal/attestation/qemu"
 	"github.com/edgelesssys/constellation/v2/internal/attestation/tdx"
 	"github.com/edgelesssys/constellation/v2/internal/attestation/variant"
@@ -42,6 +43,8 @@ func Issuer(attestationVariant variant.Variant, log attestation.Logger) (atls.Is
 		return qemu.NewIssuer(log), nil
 	case variant.QEMUTDX{}:
 		return tdx.NewIssuer(log), nil
+	case variant.GCPSEVSNP{}:
+		return generic.NewIssuer(vtpm.OpenVTPM, generic.TEETechSEVSNP, log), nil
 	case variant.Dummy{}:
 		return atls.NewFakeIssuer(variant.Dummy{}), nil
 	default:

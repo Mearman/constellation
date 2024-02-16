@@ -10,6 +10,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/sha512"
+	"crypto/x509"
 	"errors"
 	"fmt"
 
@@ -36,6 +37,8 @@ import (
 type Validator struct {
 	expected measurements.M
 	tech     TEETechnology
+
+	certChainGetter trust.HTTPSGetter
 
 	teeAttestationConfig TEEAttestationConfig
 
@@ -76,9 +79,10 @@ func NewValidator(expected measurements.M, tech TEETechnology, log attestation.L
 	}
 
 	return &Validator{
-		expected: expected,
-		tech:     tech,
-		log:      log,
+		expected:        expected,
+		tech:            tech,
+		certChainGetter: trust.DefaultHTTPSGetter(),
+		log:             log,
 	}
 }
 
@@ -101,12 +105,25 @@ func (v *Validator) Validate(ctx context.Context, rawAttestation, userData, nonc
 		}
 	}()
 
+	// Unmarshal the attestation document.
 	var attestation *attest.Attestation
 	if err := proto.Unmarshal(rawAttestation, attestation); err != nil {
 		return fmt.Errorf("unmarshalling attestation document: %w", err)
 	}
-
 	attestationKeyDigest := sha512.Sum512(attestation.AkPub)
+
+	// For SEV-SNP, we need to add some certificates to the attestation object.
+	if v.tech == TEETechSEVSNP {
+		attestation, err = v.addSEVSNPCertChain(attestation, v.certChainGetter,
+			(*x509.Certificate)(&v.teeAttestationConfig.SEVSNP.AttestationConfig.AMDSigningKey),
+			(*x509.Certificate)(&v.teeAttestationConfig.SEVSNP.AttestationConfig.AMDRootKey),
+			// TODO(msanft): Once the generic validator is used for AWS / Azure, this needs to be
+			// replaced with an actual, passed-in value.
+			&ReportSigners{})
+		if err != nil {
+			return fmt.Errorf("adding SEV-SNP certificates to attestation document: %w", err)
+		}
+	}
 
 	// Verify the TPM attestation
 	if _, err := tpmServer.VerifyAttestation(
