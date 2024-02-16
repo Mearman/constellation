@@ -372,7 +372,6 @@ type attestationDoc struct {
 		TeeAttestation interface{}       `json:"TeeAttestation"`
 	} `json:"Attestation"`
 	InstanceInfo string `json:"InstanceInfo"`
-	UserData     string `json:"UserData"`
 }
 
 type constellationVerifier struct {
@@ -400,7 +399,7 @@ func (v *constellationVerifier) Verify(
 	}
 
 	v.log.Debug("Verifying attestation")
-	signedData, err := validator.Validate(ctx, resp.Attestation, req.Nonce)
+	signedData, err := validator.Validate(ctx, resp.Attestation, []byte(constants.ConstellationVerifyServiceUserData), req.Nonce)
 	if err != nil {
 		return "", fmt.Errorf("validating attestation: %w", err)
 	}

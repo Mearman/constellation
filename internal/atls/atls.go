@@ -76,13 +76,13 @@ func CreateAttestationClientTLSConfig(issuer Issuer, validators []Validator) (*t
 // Issuer issues an attestation document.
 type Issuer interface {
 	variant.Getter
-	Issue(ctx context.Context, userData []byte, nonce []byte) (quote []byte, err error)
+	Issue(ctx context.Context, userData, nonce []byte) (quote []byte, err error)
 }
 
 // Validator is able to validate an attestation document.
 type Validator interface {
 	variant.Getter
-	Validate(ctx context.Context, attDoc []byte, nonce []byte) ([]byte, error)
+	Validate(ctx context.Context, attDoc, userData, nonce []byte) ([]byte, error)
 }
 
 // getATLSConfigForClientFunc returns a config setup function that is called once for every client connecting to the server.
@@ -207,7 +207,7 @@ func verifyEmbeddedReport(validators []Validator, cert *x509.Certificate, hash, 
 				ctx, cancel := context.WithTimeout(context.Background(), attestationTimeout)
 				defer cancel()
 
-				userData, err := validator.Validate(ctx, ex.Value, nonce)
+				userData, err := validator.Validate(ctx, ex.Value, hash, nonce)
 				if err != nil {
 					return err
 				}
@@ -383,7 +383,7 @@ func NewFakeValidators(oid variant.Getter) []Validator {
 }
 
 // Validate unmarshals the attestation document and verifies the nonce.
-func (v FakeValidator) Validate(_ context.Context, attDoc []byte, nonce []byte) ([]byte, error) {
+func (v FakeValidator) Validate(_ context.Context, attDoc, userData, nonce []byte) ([]byte, error) {
 	var doc FakeAttestationDoc
 	if err := json.Unmarshal(attDoc, &doc); err != nil {
 		return nil, err

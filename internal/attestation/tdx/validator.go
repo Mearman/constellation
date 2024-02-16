@@ -48,7 +48,7 @@ func NewValidator(cfg *config.QEMUTDX, log attestation.Logger) *Validator {
 }
 
 // Validate validates the given attestation document using TDX attestation.
-func (v *Validator) Validate(ctx context.Context, attDocRaw []byte, nonce []byte) (userData []byte, err error) {
+func (v *Validator) Validate(ctx context.Context, attDocRaw, userData, nonce []byte) (verifiedUserData []byte, err error) {
 	v.log.Info("Validating attestation document")
 	defer func() {
 		if err != nil {
@@ -68,7 +68,7 @@ func (v *Validator) Validate(ctx context.Context, attDocRaw []byte, nonce []byte
 	}
 
 	// Report data
-	extraData := attestation.MakeExtraData(attDoc.UserData, nonce)
+	extraData := attestation.MakeExtraData(userData, nonce)
 	if !attestation.CompareExtraData(quote.Body.ReportData[:], extraData) {
 		return nil, fmt.Errorf("report data in TDX quote does not match provided nonce")
 	}
@@ -89,5 +89,5 @@ func (v *Validator) Validate(ctx context.Context, attDocRaw []byte, nonce []byte
 		return nil, fmt.Errorf("measurement validation failed:\n%w", errors.Join(errs...))
 	}
 
-	return attDoc.UserData, nil
+	return userData, nil
 }

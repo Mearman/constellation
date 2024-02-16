@@ -51,10 +51,10 @@ type cachedCerts interface {
 }
 
 // Validate calls the validators Validate method, and prevents any updates during the call.
-func (u *Updatable) Validate(ctx context.Context, attDoc []byte, nonce []byte) ([]byte, error) {
+func (u *Updatable) Validate(ctx context.Context, attDoc, userData, nonce []byte) ([]byte, error) {
 	u.mux.Lock()
 	defer u.mux.Unlock()
-	return u.Validator.Validate(ctx, attDoc, nonce)
+	return u.Validator.Validate(ctx, attDoc, userData, nonce)
 }
 
 // OID returns the validators Object Identifier.

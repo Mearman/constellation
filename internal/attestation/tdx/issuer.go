@@ -57,7 +57,6 @@ func (i *Issuer) Issue(_ context.Context, userData []byte, nonce []byte) (attDoc
 
 	rawAttDoc, err := json.Marshal(tdxAttestationDocument{
 		RawQuote: quote,
-		UserData: userData,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling attestation document: %w", err)

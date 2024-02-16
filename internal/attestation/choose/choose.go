@@ -21,6 +21,7 @@ import (
 	"github.com/edgelesssys/constellation/v2/internal/attestation/qemu"
 	"github.com/edgelesssys/constellation/v2/internal/attestation/tdx"
 	"github.com/edgelesssys/constellation/v2/internal/attestation/variant"
+	"github.com/edgelesssys/constellation/v2/internal/attestation/vtpm"
 	"github.com/edgelesssys/constellation/v2/internal/config"
 )
 
@@ -45,6 +46,8 @@ func Issuer(attestationVariant variant.Variant, log attestation.Logger) (atls.Is
 		return tdx.NewIssuer(log), nil
 	case variant.GCPSEVSNP{}:
 		return generic.NewIssuer(vtpm.OpenVTPM, generic.TEETechSEVSNP, log), nil
+	case variant.GCPTDX{}:
+		return generic.NewIssuer(vtpm.OpenVTPM, generic.TEETechTDX, log), nil
 	case variant.Dummy{}:
 		return atls.NewFakeIssuer(variant.Dummy{}), nil
 	default:
@@ -71,6 +74,10 @@ func Validator(cfg config.AttestationCfg, log attestation.Logger) (atls.Validato
 		return qemu.NewValidator(cfg, log), nil
 	case *config.QEMUTDX:
 		return tdx.NewValidator(cfg, log), nil
+	case *config.GCPSEVSNP:
+		return generic.NewValidator(cfg, generic.TEETechSEVSNP, log), nil
+	case *config.GCPTDX:
+		return generic.NewValidator(cfg, generic.TEETechTDX, log), nil
 	case *config.DummyCfg:
 		return atls.NewFakeValidator(variant.Dummy{}), nil
 	default:

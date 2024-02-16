@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "generic",
+    srcs = [
+        "certchain.go",
+        "generic.go",
+        "issuer.go",
+        "validator.go",
+        "variant.go",
+    ],
+    importpath = "github.com/edgelesssys/constellation/v2/internal/attestation/generic",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/attestation",
+        "//internal/attestation/measurements",
+        "//internal/attestation/variant",
+        "//internal/config",
+        "//internal/constants",
+        "@com_github_google_go_sev_guest//abi",
+        "@com_github_google_go_sev_guest//kds",
+        "@com_github_google_go_sev_guest//proto/sevsnp",
+        "@com_github_google_go_sev_guest//validate",
+        "@com_github_google_go_sev_guest//verify",
+        "@com_github_google_go_sev_guest//verify/trust",
+        "@com_github_google_go_tdx_guest//validate",
+        "@com_github_google_go_tdx_guest//verify",
+        "@com_github_google_go_tpm//legacy/tpm2",
+        "@com_github_google_go_tpm_tools//client",
+        "@com_github_google_go_tpm_tools//proto/attest",
+        "@com_github_google_go_tpm_tools//proto/tpm",
+        "@com_github_google_go_tpm_tools//server",
+        "@org_golang_google_protobuf//proto",
+    ],
+)

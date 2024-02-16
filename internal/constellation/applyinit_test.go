@@ -311,7 +311,7 @@ type testValidator struct {
 	pcrs measurements.M
 }
 
-func (v *testValidator) Validate(_ context.Context, attDoc []byte, _ []byte) ([]byte, error) {
+func (v *testValidator) Validate(_ context.Context, attDoc, _, _ []byte) ([]byte, error) {
 	var attestation struct {
 		UserData []byte
 		PCRs     map[uint32][]byte

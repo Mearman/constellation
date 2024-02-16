@@ -19,8 +19,6 @@ import (
 type tdxAttestationDocument struct {
 	// RawQuote is the raw TDX quote.
 	RawQuote []byte
-	// UserData is the user data that was passed to the enclave and was included in the quote.
-	UserData []byte
 }
 
 // Device is an interface for a TDX device.

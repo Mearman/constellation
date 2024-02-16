@@ -47,7 +47,6 @@ type Validator struct {
 
 // TEEAttestationConfig are the configuration options for validating a TEE attestation.
 type TEEAttestationConfig struct {
-
 	// TODO(msanft): Make these generic types for all CSPs (except Azure)
 	// once we use the generic attestation package for non-GCP CSPs.
 
@@ -73,13 +72,13 @@ type TDXAttestationConfig struct {
 }
 
 // NewValidator returns a new Validator.
-func NewValidator(expected measurements.M, tech TEETechnology, log attestation.Logger) *Validator {
+func NewValidator(cfg config.AttestationCfg, tech TEETechnology, log attestation.Logger) *Validator {
 	if log == nil {
 		log = &attestation.NOPLogger{}
 	}
 
 	return &Validator{
-		expected:        expected,
+		expected:        cfg.GetMeasurements(),
 		tech:            tech,
 		certChainGetter: trust.DefaultHTTPSGetter(),
 		log:             log,
@@ -97,7 +96,7 @@ It does so by:
 
 After the validation, userData is known to be trusted.
 */
-func (v *Validator) Validate(ctx context.Context, rawAttestation, userData, nonce []byte) (err error) {
+func (v *Validator) Validate(ctx context.Context, rawAttestation, userData, nonce []byte) (verifiedUserData []byte, err error) {
 	v.log.Info("Validating attestation document")
 	defer func() {
 		if err != nil {
@@ -108,7 +107,7 @@ func (v *Validator) Validate(ctx context.Context, rawAttestation, userData, nonc
 	// Unmarshal the attestation document.
 	var attestation *attest.Attestation
 	if err := proto.Unmarshal(rawAttestation, attestation); err != nil {
-		return fmt.Errorf("unmarshalling attestation document: %w", err)
+		return nil, fmt.Errorf("unmarshalling attestation document: %w", err)
 	}
 	attestationKeyDigest := sha512.Sum512(attestation.AkPub)
 
@@ -121,7 +120,7 @@ func (v *Validator) Validate(ctx context.Context, rawAttestation, userData, nonc
 			// replaced with an actual, passed-in value.
 			&ReportSigners{})
 		if err != nil {
-			return fmt.Errorf("adding SEV-SNP certificates to attestation document: %w", err)
+			return nil, fmt.Errorf("adding SEV-SNP certificates to attestation document: %w", err)
 		}
 	}
 
@@ -140,24 +139,24 @@ func (v *Validator) Validate(ctx context.Context, rawAttestation, userData, nonc
 			TEEOpts: v.teeOpts(attestationKeyDigest[:]),
 		},
 	); err != nil {
-		return fmt.Errorf("verifying attestation document: %w", err)
+		return nil, fmt.Errorf("verifying attestation document: %w", err)
 	}
 
 	// Verify PCRs
 	quoteIdx, err := GetSHA256QuoteIndex(attestation.Quotes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	warnings, errs := v.expected.Compare(attestation.Quotes[quoteIdx].Pcrs.Pcrs)
 	for _, warning := range warnings {
 		v.log.Warn(warning)
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("measurement validation failed:\n%w", errors.Join(errs...))
+		return nil, fmt.Errorf("measurement validation failed:\n%w", errors.Join(errs...))
 	}
 
 	v.log.Info("Successfully validated attestation document")
-	return nil
+	return userData, nil
 }
 
 // teeOpts returns the options for verifying the TEE attestation report, based on the TEE technology.

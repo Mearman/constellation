@@ -73,8 +73,6 @@ type AttestationDocument struct {
 	Attestation *attest.Attestation
 	// InstanceInfo is used to verify the provided public key.
 	InstanceInfo []byte
-	// arbitrary data, quoted by the TPM.
-	UserData []byte
 }
 
 // Issuer handles issuing of TPM based attestation documents.
@@ -102,7 +100,7 @@ func NewIssuer(
 }
 
 // Issue generates an attestation document using a TPM.
-func (i *Issuer) Issue(ctx context.Context, userData []byte, nonce []byte) (res []byte, err error) {
+func (i *Issuer) Issue(ctx context.Context, userData, nonce []byte) (res []byte, err error) {
 	i.log.Info("Issuing attestation statement")
 	defer func() {
 		if err != nil {
@@ -139,7 +137,6 @@ func (i *Issuer) Issue(ctx context.Context, userData []byte, nonce []byte) (res 
 	attDoc := AttestationDocument{
 		Attestation:  tpmAttestation,
 		InstanceInfo: instanceInfo,
-		UserData:     userData,
 	}
 
 	rawAttDoc, err := json.Marshal(attDoc)
@@ -176,7 +173,7 @@ func NewValidator(expected measurements.M, getTrustedKey GetTPMTrustedAttestatio
 }
 
 // Validate a TPM based attestation.
-func (v *Validator) Validate(ctx context.Context, attDocRaw []byte, nonce []byte) (userData []byte, err error) {
+func (v *Validator) Validate(ctx context.Context, attDocRaw, userData, nonce []byte) (verifiedUserData []byte, err error) {
 	v.log.Info("Validating attestation document")
 	defer func() {
 		if err != nil {
@@ -200,7 +197,7 @@ func (v *Validator) Validate(ctx context.Context, attDocRaw []byte, nonce []byte
 		return nil, fmt.Errorf("unmarshaling TPM attestation document: %w", err)
 	}
 
-	extraData := attestation.MakeExtraData(attDoc.UserData, nonce)
+	extraData := attestation.MakeExtraData(userData, nonce)
 
 	// Verify and retrieve the trusted attestation public key using the provided instance info
 	aKP, err := v.getTrustedKey(ctx, attDoc, extraData)
@@ -240,7 +237,7 @@ func (v *Validator) Validate(ctx context.Context, attDocRaw []byte, nonce []byte
 	}
 
 	v.log.Info("Successfully validated attestation document")
-	return attDoc.UserData, nil
+	return userData, nil
 }
 
 // GetSHA256QuoteIndex performs safety checks and returns the index for SHA256 PCR quotes.

@@ -101,7 +101,7 @@ func TestTpmEnabled(t *testing.T) {
 		},
 		"invalid json instanceIdentityDocument": {
 			attDoc: vtpm.AttestationDocument{
-				UserData: []byte("{invalid}"),
+				InstanceInfo: []byte("invalid"),
 			},
 			awsAPI:  &stubDescribeAPI{describeImagesErr: errors.New("failed")},
 			wantErr: true,

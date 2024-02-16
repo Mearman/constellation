@@ -95,10 +95,13 @@ type fakeValidator struct {
 	err error
 }
 
-func (v fakeValidator) Validate(_ context.Context, attDoc []byte, nonce []byte) ([]byte, error) {
+func (v fakeValidator) Validate(_ context.Context, attDoc, userData, nonce []byte) ([]byte, error) {
 	var doc fakeDoc
 	if err := json.Unmarshal(attDoc, &doc); err != nil {
 		return nil, err
+	}
+	if !bytes.Equal(doc.UserData, userData) {
+		return nil, errors.New("invalid user data")
 	}
 	if !bytes.Equal(doc.Nonce, nonce) {
 		return nil, errors.New("invalid nonce")

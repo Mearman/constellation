@@ -98,10 +98,10 @@ func TestValidate(t *testing.T) {
 	var attDoc AttestationDocument
 	err = json.Unmarshal(attDocRaw, &attDoc)
 	require.NoError(err)
-	require.Equal(challenge, attDoc.UserData)
+	require.Equal(challenge, challenge)
 
 	// valid test
-	out, err := validator.Validate(ctx, attDocRaw, nonce)
+	out, err := validator.Validate(ctx, attDocRaw, challenge, nonce)
 	require.NoError(err)
 	require.Equal(challenge, out)
 
@@ -109,7 +109,7 @@ func TestValidate(t *testing.T) {
 	require.NoError(initialize.MarkNodeAsBootstrapped(tpmOpen, []byte{2}))
 	attDocBootstrappedRaw, err := issuer.Issue(ctx, challenge, nonce)
 	require.NoError(err)
-	_, err = validator.Validate(ctx, attDocBootstrappedRaw, nonce)
+	_, err = validator.Validate(ctx, attDocBootstrappedRaw, challenge, nonce)
 	require.Error(err)
 
 	// userData must be bound to PCR state
@@ -120,7 +120,7 @@ func TestValidate(t *testing.T) {
 	attDocBootstrapped.Attestation = attDoc.Attestation
 	attDocBootstrappedRaw, err = json.Marshal(attDocBootstrapped)
 	require.NoError(err)
-	_, err = validator.Validate(ctx, attDocBootstrappedRaw, nonce)
+	_, err = validator.Validate(ctx, attDocBootstrappedRaw, []byte{2, 3}, nonce)
 	require.Error(err)
 
 	expectedPCRs := measurements.M{
@@ -149,7 +149,7 @@ func TestValidate(t *testing.T) {
 		fakeValidateCVM,
 		warnLog,
 	)
-	out, err = warningValidator.Validate(ctx, attDocRaw, nonce)
+	out, err = warningValidator.Validate(ctx, attDocRaw, challenge, nonce)
 	require.NoError(err)
 	assert.Equal(t, challenge, out)
 	assert.Len(t, warnLog.warnings, 4)
@@ -158,12 +158,14 @@ func TestValidate(t *testing.T) {
 		validator *Validator
 		attDoc    []byte
 		nonce     []byte
+		userData  []byte
 		wantErr   bool
 	}{
 		"valid": {
 			validator: NewValidator(testExpectedPCRs, fakeGetTrustedKey, fakeValidateCVM, warnLog),
 			attDoc:    mustMarshalAttestation(attDoc, require),
 			nonce:     nonce,
+			userData:  challenge,
 		},
 		"invalid nonce": {
 			validator: NewValidator(testExpectedPCRs, fakeGetTrustedKey, fakeValidateCVM, warnLog),
@@ -176,10 +178,10 @@ func TestValidate(t *testing.T) {
 			attDoc: mustMarshalAttestation(AttestationDocument{
 				Attestation:  attDoc.Attestation,
 				InstanceInfo: attDoc.InstanceInfo,
-				UserData:     []byte("wrong data"),
 			}, require),
-			nonce:   nonce,
-			wantErr: true,
+			nonce:    nonce,
+			userData: []byte("wrong data"),
+			wantErr:  true,
 		},
 		"untrusted attestation public key": {
 			validator: NewValidator(
@@ -188,9 +190,10 @@ func TestValidate(t *testing.T) {
 					return nil, errors.New("untrusted")
 				},
 				fakeValidateCVM, warnLog),
-			attDoc:  mustMarshalAttestation(attDoc, require),
-			nonce:   nonce,
-			wantErr: true,
+			attDoc:   mustMarshalAttestation(attDoc, require),
+			nonce:    nonce,
+			userData: challenge,
+			wantErr:  true,
 		},
 		"not a CVM": {
 			validator: NewValidator(
@@ -200,9 +203,10 @@ func TestValidate(t *testing.T) {
 					return errors.New("untrusted")
 				},
 				warnLog),
-			attDoc:  mustMarshalAttestation(attDoc, require),
-			nonce:   nonce,
-			wantErr: true,
+			attDoc:   mustMarshalAttestation(attDoc, require),
+			nonce:    nonce,
+			userData: challenge,
+			wantErr:  true,
 		},
 		"untrusted PCRs": {
 			validator: NewValidator(
@@ -219,9 +223,10 @@ func TestValidate(t *testing.T) {
 				fakeGetTrustedKey,
 				fakeValidateCVM,
 				warnLog),
-			attDoc:  mustMarshalAttestation(attDoc, require),
-			nonce:   nonce,
-			wantErr: true,
+			attDoc:   mustMarshalAttestation(attDoc, require),
+			nonce:    nonce,
+			userData: challenge,
+			wantErr:  true,
 		},
 		"untrusted WarnOnly PCRs": {
 			validator: NewValidator(
@@ -238,9 +243,10 @@ func TestValidate(t *testing.T) {
 				fakeGetTrustedKey,
 				fakeValidateCVM,
 				logger.NewTest(t)),
-			attDoc:  mustMarshalAttestation(attDoc, require),
-			nonce:   nonce,
-			wantErr: false,
+			attDoc:   mustMarshalAttestation(attDoc, require),
+			nonce:    nonce,
+			userData: challenge,
+			wantErr:  false,
 		},
 		"no sha256 quote": {
 			validator: NewValidator(testExpectedPCRs, fakeGetTrustedKey, fakeValidateCVM, warnLog),
@@ -254,15 +260,16 @@ func TestValidate(t *testing.T) {
 					InstanceInfo: attDoc.Attestation.InstanceInfo,
 				},
 				InstanceInfo: attDoc.InstanceInfo,
-				UserData:     attDoc.UserData,
 			}, require),
-			nonce:   nonce,
-			wantErr: true,
+			nonce:    nonce,
+			userData: challenge,
+			wantErr:  true,
 		},
 		"invalid attestation document": {
 			validator: NewValidator(testExpectedPCRs, fakeGetTrustedKey, fakeValidateCVM, warnLog),
 			attDoc:    []byte("invalid attestation"),
 			nonce:     nonce,
+			userData:  challenge,
 			wantErr:   true,
 		},
 	}
@@ -271,7 +278,7 @@ func TestValidate(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			assert := assert.New(t)
 
-			_, err = tc.validator.Validate(ctx, tc.attDoc, tc.nonce)
+			_, err = tc.validator.Validate(ctx, tc.attDoc, tc.userData, tc.nonce)
 			if tc.wantErr {
 				assert.Error(err)
 			} else {
