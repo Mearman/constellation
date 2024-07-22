@@ -48,6 +48,13 @@ locals {
 
   in_cluster_endpoint     = var.internal_load_balancer ? azurerm_lb.loadbalancer.frontend_ip_configuration[0].private_ip_address : azurerm_public_ip.loadbalancer_ip[0].ip_address
   out_of_cluster_endpoint = var.debug && var.internal_load_balancer ? module.jump_host[0].ip : local.in_cluster_endpoint
+  revision                = 1
+}
+
+# A way to force replacement of resources if the provider does not want to replace them
+# see: https://developer.hashicorp.com/terraform/language/resources/terraform-data#example-usage-data-for-replace_triggered_by
+resource "terraform_data" "replacement" {
+  input = local.revision
 }
 
 resource "random_id" "uid" {
@@ -303,39 +310,4 @@ data "azurerm_subscription" "current" {
 data "azurerm_user_assigned_identity" "uaid" {
   name                = local.uai_name
   resource_group_name = local.uai_resource_group
-}
-
-moved {
-  to   = azurerm_network_security_rule.nsg_rule["nodeports"]
-  from = azurerm_network_security_group.security_group.security_rule["nodeports"]
-}
-
-moved {
-  to   = azurerm_network_security_rule.nsg_rule["kubernetes"]
-  from = azurerm_network_security_group.security_group.security_rule["kubernetes"]
-}
-
-moved {
-  to   = azurerm_network_security_rule.nsg_rule["bootstrapper"]
-  from = azurerm_network_security_group.security_group.security_rule["bootstrapper"]
-}
-
-moved {
-  to   = azurerm_network_security_rule.nsg_rule["verify"]
-  from = azurerm_network_security_group.security_group.security_rule["verify"]
-}
-
-moved {
-  to   = azurerm_network_security_rule.nsg_rule["recovery"]
-  from = azurerm_network_security_group.security_group.security_rule["recovery"]
-}
-
-moved {
-  to   = azurerm_network_security_rule.nsg_rule["join"]
-  from = azurerm_network_security_group.security_group.security_rule["join"]
-}
-
-moved {
-  to   = azurerm_network_security_rule.nsg_rule["debugd"]
-  from = azurerm_network_security_group.security_group.security_rule["debugd"]
 }
